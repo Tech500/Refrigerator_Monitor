@@ -1,0 +1,94 @@
+<!DOCTYPE HTML><html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>ESP32 (LoRa + Server)</title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+	}
+	button {
+	display: inline-block;
+	background-color: #1586b8;
+	padding: 20px;
+	width: 200px;
+	color: #ffffff;
+	text-align: center;
+    }
+    header {
+      margin: 0;
+      padding-top: 5vh;
+      padding-bottom: 5vh;
+      overflow: hidden;
+      background-image: url(winter);
+      background-size: cover;
+      color: white;
+    }
+    h2 {
+      font-size: 2.0rem;
+    }
+    p { font-size: 1.2rem; }
+    .units { font-size: 1.2rem; }
+    .readings { font-size: 2.0rem; }
+  </style> 
+</head>
+<body>
+  <header>
+    <h2>Refrigerator Temperature</h2>
+	<H1>Featuring SMS and Email Alerts
+    <p><strong>Last received packet:<br/><span id="timestamp">%TIMESTAMP%</span></strong></p>
+    <p>LoRa RSSI: <span id="rssi">%RSSI%</span></p>
+  </header>
+<main>
+  <p>
+  <br></br>
+    <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> Temperature: <span id="temperature" class="readings">%TEMPERATURE%</span>
+    <sup>&deg;F</sup>
+  </p>
+  <p>
+  
+  <div>
+	<iframe width="450" height="261" style="border: 1px solid #cccccc;" src="https://thingspeak.com/channels/2246200/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&title=Kitchen+Refrigerator&type=line"></iframe>
+  </div>
+</main>
+<footer>
+		<br><br>
+		<button onclick="turnOffAlert()">Turn Off Alert</button>
+		<p id="test">Alert On</p>
+		
+		<script>
+		    
+			function turnOffAlert(){
+				document.getElementById("test").innerHTML="Alert Off";
+				window.history.replaceState({}, "", window.location.href);
+				var xhr = new XMLHttpRequest();
+				xhr.open("GET", "/turnOffAlert", true);
+				xhr.send();
+				
+			}
+		
+		</script>
+</footer>
+<script>
+setInterval(updateValues, 10000, "temperature");
+setInterval(updateValues, 10000, "humidity");
+setInterval(updateValues, 10000, "pressure");
+setInterval(updateValues, 10000, "rssi");
+setInterval(updateValues, 10000, "timestamp");
+
+function updateValues(value) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById(value).innerHTML = this.responseText;
+    }
+  };
+  xhttp.open("GET", "/" + value, true);
+  xhttp.send();
+}
+</script>
+</body>
+</html>
