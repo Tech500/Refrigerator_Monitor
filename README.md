@@ -1,4 +1,4 @@
-# Refridgerator_Monitor
+# Refrigerator_Monitor
 Lora refridgerator monitor with sms text, email alerts, graphing and web interface.
 
 Work in progress. Working except deep sleep; when powered by known good battery source 
