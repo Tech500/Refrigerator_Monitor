@@ -1,5 +1,3 @@
-
-//This program only tests T3_V1.6.1
 #include <LoRa.h>
 #include "boards.h"
 
@@ -28,7 +26,7 @@ float pressure = 0;
 
 int flag = 0;
 
-WiFiClient client;
+WiFiClient client; 
 
 #define TZ "EST+5EDT,M3.2.0/2,M11.1.0/2"
 
