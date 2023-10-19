@@ -104,7 +104,7 @@ const char * myWriteAPIKey = "UR6ULZK3YZ3C52D4";
    
 */
 
-int alert = 1;
+int alert;
 int alertFlag;
 
 // Create AsyncWebServer object on port 80
@@ -157,6 +157,8 @@ void getLoRaData()
   Serial.print(" with RSSI ");    
   Serial.println(rssi);
 }
+
+bool alertState;
 
 void setup()
 {
@@ -220,10 +222,23 @@ void setup()
     request->send(LittleFS, "/data/winter.jpg", "image/jpg");
   });
 
-  serverAsync.on("/turnOffAlert", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "ok");
-    alert = 0;
-    alertFlag = 1;
+  // Handle the /toggle-button route
+  serverAsync.on("/toggle-button", HTTP_GET, [](AsyncWebServerRequest *request){
+    // Toggle the state of the alert flag
+    alertState = !alertState;
+    if(alertState){
+      alert = 1;  //turns on alerts in main code
+    } else {
+      alert = 0;  //turns off alerts in main code
+    }
+
+    // Send a response to the client
+    request->send(200, "text/plain", "Button Clicked");
+  });
+
+  // Server-side error handling
+  serverAsync.onNotFound([](AsyncWebServerRequest *request){
+  request->send(404, "text/plain", "Not found");
   });
 
   serverAsync.onNotFound(onRequest);
@@ -238,12 +253,6 @@ void setup()
 
 void loop()
 {
-    
-  if(alertFlag == 1)
-  {
-    alertFlag = 0;
-    exit;
-  }
 
   for (int x = 1; x < 5000; x++)
   {
@@ -261,47 +270,21 @@ void loop()
 
   getDateTime();
   
-  if((MINUTE % 2 == 0) && (SECOND == 10))
-  {
-    //Serial.println(dtStamp);
-    //sendAlerts();
-  }
-  
 	//Set alert back to enabled if disabled
 	if ((MINUTE % 30 == 0) && (SECOND == 0))
 	{
-
 	  alert = 1;
-      
-	  //Serial.println(dtStamp);
- 
- 	  
-
-	}
+  }
 
   // Check if there are LoRa packets available
 	int packetSize = LoRa.parsePacket();
 	if (packetSize) {
 		getLoRaData();
 		getDateTime();
+    Serial.println("Alert:  " + (String)alert);
     thingSpeak();
+    sendAlerts();
 	} 
-
-/*
-#ifdef HAS_DISPLAY
-        if (u8g2) {
-            u8g2->clearBuffer();
-            char buf[256];
-            u8g2->drawStr(0, 12, "Received OK!");
-            u8g2->drawStr(0, 26, recv.c_str());
-            snprintf(buf, sizeof(buf), "RSSI:%.2f", LoRa.packetRssi());
-            u8g2->drawStr(0, 40, buf);
-            u8g2->sendBuffer();
-        }
-#endif
-
-    } 
-    */  
 }
 
 String getDateTime()
@@ -327,7 +310,7 @@ String getDateTime()
 void sendAlerts()
 {
       
-  if((temperature > "32") && (alert == 1))
+  if((temperature >= "40") && (alert == 1))
   {    
       EMailSender::EMailMessage message;
       message.subject = "Warning --Temperature Rise!!!";
