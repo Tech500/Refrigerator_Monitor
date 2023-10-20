@@ -1,3 +1,6 @@
+//Based on:  https://github.com/Xinyuan-LilyGO/LilyGo-LoRa-Series/blob/master/examples/SleepTest/SleepTest.ino
+//This program only tests T3_V1.6.1
+
 #include <LoRa.h>
 #include "boards.h"
 
@@ -215,11 +218,13 @@ void goToDeepSleep()
 
   Serial.println("Going to sleep...");
   
-  /*
+  
   LoRa.sleep();
   SPI.end();
   //SDSPI.end();
   delay(2000);
+
+  /*
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
   //btStop();
