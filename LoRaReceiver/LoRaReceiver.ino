@@ -143,6 +143,9 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
   //Handle WebSocket event
 }
 
+String temperature_String = temperature;
+float temperature_Float = temperature_String.toFloat();
+
 // Read LoRa packet and get the sensor readings
 void getLoRaData() 
 {
@@ -161,7 +164,12 @@ void getLoRaData()
     readingID = LoRaData.substring(0, pos1);
     temperature = LoRaData.substring(pos1 +1, pos2);
     humidity = LoRaData.substring(pos2+1, pos3);
-    pressure = LoRaData.substring(pos3+1, LoRaData.length());    
+    pressure = LoRaData.substring(pos3+1, LoRaData.length());
+
+    if(temperature_Float >= 40){
+      Serial.println(temperature_Float);
+      alert = 1;
+    }
   }
   
   // Get RSSI
@@ -170,7 +178,7 @@ void getLoRaData()
   Serial.println(rssi);
 }
 
-bool alertState;
+bool alertState true;
 
 void setup()
 {
