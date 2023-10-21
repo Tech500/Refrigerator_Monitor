@@ -1,15 +1,3 @@
-Based on Rui Santos project:
-
-/*********
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-lora-sensor-web-server/
-  
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-  
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*********/
 
 #include <LoRa.h>
 #include "boards.h"
@@ -58,8 +46,8 @@ WiFiClient client;
 
 FTPServer ftpSrv(LittleFS);
 
-const char * ftpUser = "tech500";
-const char * ftpPassword = "treyburn";
+const char * ftpUser = "admin";
+const char * ftpPassword = "password";
 
 ///Are we currently connected?
 boolean connected = false;
@@ -82,6 +70,7 @@ String timestamp;
 
 // Initialize variables to get and save LoRa data
 int rssi;
+int lastRSSI;
 String loRaMessage;
 String temperature;
 String humidity;
@@ -104,8 +93,8 @@ EMailSender emailSend("lucidw.esp8266@gmail.com", "adhsmbhxkthrhvut");  //gmail 
 
 //Graphing requires "FREE" "ThingSpeak.com" account..  
 //Enter "ThingSpeak.com" data here....
-unsigned long myChannelNumber =  2246200;
-const char * myWriteAPIKey = "UR6ULZK3YZ3C52D4";
+unsigned long myChannelNumber =  1234567;
+const char * myWriteAPIKey = "xyz12345";
 
 /*
   This is the ThingSpeak channel number for the MathwWorks weather station
@@ -116,7 +105,7 @@ const char * myWriteAPIKey = "UR6ULZK3YZ3C52D4";
    
 */
 
-int alert;
+int alert = 0;
 int alertFlag;
 
 // Create AsyncWebServer object on port 80
@@ -143,6 +132,15 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
   //Handle WebSocket event
 }
 
+bool detect_string_of_non_printable_ascii_characters(String LoRaData) {  //Function developed by Google's Bard
+  for (int i = 0; i < LoRaData.length(); i++) {
+    if (LoRaData[i] < 32 || LoRaData[i] > 126) {
+      return true;
+    }
+  }
+  return false;
+}
+
 String temperature_String = temperature;
 float temperature_Float = temperature_String.toFloat();
 
@@ -155,30 +153,37 @@ void getLoRaData()
     String LoRaData = LoRa.readString();
     // LoRaData format: readingID/temperature&soilMoisture#batterylevel
     // String example: 1/27.43&654#95.34
-    Serial.print(LoRaData); 
+    if (detect_string_of_non_printable_ascii_characters(LoRaData)) {
+      Serial.println("LoRa string contains a string of non-printable ASCII characters.");
+      alertFlag = 1;
+      exit;
+    }else{
+      Serial.print(LoRaData); 
     
-    // Get readingID, temperature and soil moisture
-    int pos1 = LoRaData.indexOf('/');
-    int pos2 = LoRaData.indexOf('&');
-    int pos3 = LoRaData.indexOf('#');
-    readingID = LoRaData.substring(0, pos1);
-    temperature = LoRaData.substring(pos1 +1, pos2);
-    humidity = LoRaData.substring(pos2+1, pos3);
-    pressure = LoRaData.substring(pos3+1, LoRaData.length());
+      // Get readingID, temperature and soil moisture
+      int pos1 = LoRaData.indexOf('/');
+      int pos2 = LoRaData.indexOf('&');
+      int pos3 = LoRaData.indexOf('#');
+      readingID = LoRaData.substring(0, pos1);
+      temperature = LoRaData.substring(pos1 +1, pos2);
+      humidity = LoRaData.substring(pos2+1, pos3);
+      pressure = LoRaData.substring(pos3+1, LoRaData.length()); 
 
-    if(temperature_Float >= 40){
-      Serial.println(temperature_Float);
-      alert = 1;
+      if(temperature_Float >= 40){
+        alert = 1;
+      }
     }
   }
   
   // Get RSSI
   rssi = LoRa.packetRssi();
+  lastRSSI = rssi;
+
   Serial.print(" with RSSI ");    
   Serial.println(rssi);
 }
 
-bool alertState true;
+bool alertState = true;
 
 void setup()
 {
@@ -219,6 +224,7 @@ void setup()
   getDateTime();
 
   Serial.println(dtStamp);
+  Serial.println("");
 
   ThingSpeak.begin(client);
   
@@ -234,14 +240,15 @@ void setup()
   serverAsync.on("/dtStamp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", dtStamp.c_str());
   });
- 
+   
   serverAsync.on("/rssi", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(rssi).c_str());
   });
+  
   serverAsync.on("/winter", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/data/winter.jpg", "image/jpg");
   });
-
+  
   // Handle the /toggle-button route
   serverAsync.on("/toggle-button", HTTP_GET, [](AsyncWebServerRequest *request){
     // Toggle the state of the alert flag
@@ -288,23 +295,19 @@ void loop()
     udp.endPacket();
 	}
 
-  getDateTime();
-  
-	//Set alert back to enabled if disabled
-	if ((MINUTE % 30 == 0) && (SECOND == 0))
-	{
-	  alert = 1;
-  }
-
   // Check if there are LoRa packets available
 	int packetSize = LoRa.parsePacket();
 	if (packetSize) {
-		getLoRaData();
-		getDateTime();
-    Serial.println("Alert:  " + (String)alert);
-    thingSpeak();
-    sendAlerts();
-	} 
+    getLoRaData();
+    //Serial.println("Alert:  " + (String)alert);
+    if(alertFlag == 1){
+      exit;
+    }else{
+      thingSpeak();
+      sendAlerts();  
+    } 
+    alertFlag = 0; 
+  }  
 }
 
 String getDateTime()
@@ -333,11 +336,14 @@ void sendAlerts()
   if((temperature >= "40") && (alert == 1))
   {    
       EMailSender::EMailMessage message;
-      message.subject = "Warning --Temperature Rise!!!";
-      message.message = "Urgent --Check Refridgerator!!";
+      message.subject = "Warning --Check Refridgerator!!!";
+      message.message = "Urgent --Temperature Rise!!!  40 F. or Above";
     
-      EMailSender::Response resp = emailSend.send("3173405675@vtext.com", message);
-      emailSend.send("lucidw.esp8266@gmail.com", message);
+      EMailSender::Response resp = emailSend.send("1234567890@vtext.com", message);
+      emailSend.send("xyz12345@gmail.com", message);
+
+      //Reference for sending text by email:  
+      //https://www.lifewire.com/sms-gateway-from-email-to-sms-text-message-2495456
       
       Serial.println("Sending status: ");
     
@@ -352,8 +358,6 @@ void sendAlerts()
 
 String processor(const String& var){
 
-  getDateTime();
-
   //Serial.println(var);
   if(var == "TEMPERATURE"){
     return temperature;
@@ -363,7 +367,7 @@ String processor(const String& var){
     return dtStamp;
   }
   else if (var == "RRSI"){
-    return String(rssi);
+    return String(lastRSSI);
   }
   return String();
 }
@@ -375,6 +379,8 @@ void thingSpeak()
   // pieces of information in a channel.  Here, we write to field 1.
   ThingSpeak.writeField(myChannelNumber, 1, temperature, myWriteAPIKey); 
 
+  getDateTime();
+  
   Serial.println("Sent data to Thingspeak.com  " + dtStamp + "\n");
 
   delay(2000);
