@@ -22,8 +22,8 @@
 #include <ThingSpeak.h>
 
 // Replace with your network credentials
-const char* ssid     = "R2D2";
-const char* password = "sissy4357";
+const char* ssid     = "yourSSID";
+const char* password = "yourPASSWORD";
 
 void notFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
