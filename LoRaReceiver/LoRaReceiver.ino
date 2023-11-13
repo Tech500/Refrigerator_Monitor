@@ -22,8 +22,8 @@
 #include <ThingSpeak.h>
 
 // Replace with your network credentials
-const char* ssid     = "yourSSID";
-const char* password = "yourPASSWORD";
+const char* ssid     = "R2D2";
+const char* password = "sissy4357";
 
 void notFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
@@ -46,8 +46,8 @@ WiFiClient client;
 
 FTPServer ftpSrv(LittleFS);
 
-const char * ftpUser = "admin";
-const char * ftpPassword = "password";
+const char * ftpUser = "tech500";
+const char * ftpPassword = "treyburn";
 
 ///Are we currently connected?
 boolean connected = false;
@@ -69,8 +69,8 @@ String hour;
 String timestamp;
 
 // Initialize variables to get and save LoRa data
-int rssi;
-int lastRSSI;
+
+int rssi = LoRa.packetRssi();
 String loRaMessage;
 String temperature;
 String humidity;
@@ -93,8 +93,8 @@ EMailSender emailSend("lucidw.esp8266@gmail.com", "adhsmbhxkthrhvut");  //gmail 
 
 //Graphing requires "FREE" "ThingSpeak.com" account..  
 //Enter "ThingSpeak.com" data here....
-unsigned long myChannelNumber =  1234567;
-const char * myWriteAPIKey = "xyz12345";
+unsigned long myChannelNumber =  2246200;
+const char * myWriteAPIKey = "UR6ULZK3YZ3C52D4";
 
 /*
   This is the ThingSpeak channel number for the MathwWorks weather station
@@ -105,7 +105,7 @@ const char * myWriteAPIKey = "xyz12345";
    
 */
 
-int alert = 0;
+int alert = 1;
 int alertFlag;
 
 // Create AsyncWebServer object on port 80
@@ -177,13 +177,9 @@ void getLoRaData()
   
   // Get RSSI
   rssi = LoRa.packetRssi();
-  lastRSSI = rssi;
-
   Serial.print(" with RSSI ");    
   Serial.println(rssi);
 }
-
-bool alertState = true;
 
 void setup()
 {
@@ -224,7 +220,6 @@ void setup()
   getDateTime();
 
   Serial.println(dtStamp);
-  Serial.println("");
 
   ThingSpeak.begin(client);
   
@@ -240,32 +235,18 @@ void setup()
   serverAsync.on("/dtStamp", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", dtStamp.c_str());
   });
-   
+ 
   serverAsync.on("/rssi", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(rssi).c_str());
   });
-  
   serverAsync.on("/winter", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/data/winter.jpg", "image/jpg");
   });
-  
-  // Handle the /toggle-button route
-  serverAsync.on("/toggle-button", HTTP_GET, [](AsyncWebServerRequest *request){
-    // Toggle the state of the alert flag
-    alertState = !alertState;
-    if(alertState){
-      alert = 1;  //turns on alerts in main code
-    } else {
-      alert = 0;  //turns off alerts in main code
-    }
 
-    // Send a response to the client
-    request->send(200, "text/plain", "Button Clicked");
-  });
-
-  // Server-side error handling
-  serverAsync.onNotFound([](AsyncWebServerRequest *request){
-  request->send(404, "text/plain", "Not found");
+  serverAsync.on("/turnOffAlert", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", "ok");
+    alert = 0;
+    alertFlag = 1;
   });
 
   serverAsync.onNotFound(onRequest);
@@ -280,6 +261,12 @@ void setup()
 
 void loop()
 {
+    
+  if(alertFlag == 1)
+  {
+    alertFlag = 0;
+    exit;
+  }
 
   for (int x = 1; x < 5000; x++)
   {
@@ -295,19 +282,23 @@ void loop()
     udp.endPacket();
 	}
 
-  // Check if there are LoRa packets available
+  getDateTime();
+  
+//Set alert back to enabled if disabled
+if ((MINUTE % 30 == 0) && (SECOND == 0))
+{
+  alert = 1;
+}
+
+// Check if there are LoRa packets available
 	int packetSize = LoRa.parsePacket();
 	if (packetSize) {
-    getLoRaData();
-    //Serial.println("Alert:  " + (String)alert);
-    if(alertFlag == 1){
-      exit;
-    }else{
-      thingSpeak();
-      sendAlerts();  
-    } 
-    alertFlag = 0; 
-  }  
+	   getLoRaData();
+	   getDateTime();
+           thingSpeak();
+           sendAlerts();
+	} 
+
 }
 
 String getDateTime()
@@ -336,14 +327,11 @@ void sendAlerts()
   if((temperature >= "40") && (alert == 1))
   {    
       EMailSender::EMailMessage message;
-      message.subject = "Warning --Check Refridgerator!!!";
-      message.message = "Urgent --Temperature Rise!!!  40 F. or Above";
+      message.subject = "Warning --Temperature Rise!!!";
+      message.message = "Urgent --Check Refridgerator!!";
     
-      EMailSender::Response resp = emailSend.send("1234567890@vtext.com", message);
-      emailSend.send("xyz12345@gmail.com", message);
-
-      //Reference for sending text by email:  
-      //https://www.lifewire.com/sms-gateway-from-email-to-sms-text-message-2495456
+      EMailSender::Response resp = emailSend.send("3173405675@vtext.com", message);
+      emailSend.send("lucidw.esp8266@gmail.com", message);
       
       Serial.println("Sending status: ");
     
@@ -358,6 +346,8 @@ void sendAlerts()
 
 String processor(const String& var){
 
+  getDateTime();
+
   //Serial.println(var);
   if(var == "TEMPERATURE"){
     return temperature;
@@ -366,8 +356,11 @@ String processor(const String& var){
 
     return dtStamp;
   }
-  else if (var == "RRSI"){
-    return String(lastRSSI);
+  else if (var == "RSSI"){
+
+   return (String(rssi));
+   Serial.println(String(rssi));
+
   }
   return String();
 }
@@ -379,8 +372,6 @@ void thingSpeak()
   // pieces of information in a channel.  Here, we write to field 1.
   ThingSpeak.writeField(myChannelNumber, 1, temperature, myWriteAPIKey); 
 
-  getDateTime();
-  
   Serial.println("Sent data to Thingspeak.com  " + dtStamp + "\n");
 
   delay(2000);
