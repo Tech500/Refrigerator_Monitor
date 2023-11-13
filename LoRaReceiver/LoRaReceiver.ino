@@ -22,8 +22,8 @@
 #include <ThingSpeak.h>
 
 // Replace with your network credentials
-const char* ssid     = "R2D2";
-const char* password = "sissy4357";
+const char* ssid     = "yourSSID";
+const char* password = "yourPASSWORD";
 
 void notFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
@@ -93,8 +93,8 @@ EMailSender emailSend("lucidw.esp8266@gmail.com", "adhsmbhxkthrhvut");  //gmail 
 
 //Graphing requires "FREE" "ThingSpeak.com" account..  
 //Enter "ThingSpeak.com" data here....
-unsigned long myChannelNumber =  2246200;
-const char * myWriteAPIKey = "UR6ULZK3YZ3C52D4";
+unsigned long myChannelNumber =  1234567890;
+const char * myWriteAPIKey = "Z1234567890";
 
 /*
   This is the ThingSpeak channel number for the MathwWorks weather station
