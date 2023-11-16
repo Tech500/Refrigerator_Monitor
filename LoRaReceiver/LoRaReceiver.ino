@@ -46,8 +46,8 @@ WiFiClient client;
 
 FTPServer ftpSrv(LittleFS);
 
-const char * ftpUser = "tech500";
-const char * ftpPassword = "treyburn";
+const char * ftpUser = "yourUSERNAME";
+const char * ftpPassword = "yourPASSWORD";
 
 ///Are we currently connected?
 boolean connected = false;
